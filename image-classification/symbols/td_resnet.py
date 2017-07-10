@@ -31,10 +31,15 @@ def hyper_k_branch_residual_unit(data,hyper, num_filter, stride, dim_match,num_b
     batch_size=batch_size/num_gpus
     def branch_bneck(act1,num_filter,stride,dim_match,name,idx,bn_mom=0.9, workspace=256, memonger=False):
         idx=str(idx)
+        conv1_w=mx.sym.Variable(name + '_conv1_'+idx+'_weight', init=mx.init.Uniform(),dtype='float32')
+        bn2_gamma=mx.sym.Variable(name + '_bn2_'+idx+'_gamma', init=mx.init.Uniform(),dtype='float32')
+        bn2_beta=mx.sym.Variable(name + '_bn2_'+idx+'_beta', init=mx.init.Uniform(),dtype='float32')
         
-        conv1 = mx.sym.Convolution(data=act1, num_filter=int(num_filter*0.25), kernel=(1,1), stride=(1,1), pad=(0,0),
+        conv1 = mx.sym.Convolution(data=act1,weight=conv1_w, num_filter=int(num_filter*0.25), kernel=(1,1), stride=(1,1), pad=(0,0),
                                    no_bias=True, workspace=workspace, name=name + '_conv1_'+idx)
-        bn2 = mx.sym.BatchNorm(data=conv1, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn2_'+idx)
+        
+        
+        bn2 = mx.sym.BatchNorm(data=conv1,gamma=bn2_gamma,beta=bn2_beta, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn2_'+idx)
         act2 = mx.sym.Activation(data=bn2, act_type='relu', name=name + '_relu2_'+idx)
         conv2 = mx.sym.Convolution(data=act2, num_filter=int(num_filter*0.25), kernel=(3,3), stride=stride, pad=(1,1),
                                    no_bias=True, workspace=workspace, name=name + '_conv2_'+idx)
@@ -48,15 +53,24 @@ def hyper_k_branch_residual_unit(data,hyper, num_filter, stride, dim_match,num_b
         idx=str(idx)
         # bn1 = mx.sym.BatchNorm(data=data, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name + '_bn1_'+idx)
         # act1 = mx.sym.Activation(data=bn1, act_type='relu', name=name + '_relu1')
-        conv1 = mx.sym.Convolution(data=act1, num_filter=num_filter, kernel=(3,3), stride=stride, pad=(1,1),
+        conv1_w=mx.sym.Variable(name + '_conv1_'+idx+'_weight', init=mx.init.Uniform(),dtype='float32')
+        bn2_gamma=mx.sym.Variable(name + '_bn2_'+idx+'_gamma', init=mx.init.Uniform(),dtype='float32')
+        bn2_beta=mx.sym.Variable(name + '_bn2_'+idx+'_beta', init=mx.init.Uniform(),dtype='float32')
+        conv2_w=mx.sym.Variable(name + '_conv2_'+idx+'_weight', init=mx.init.Uniform(),dtype='float32')
+        
+        
+        conv1 = mx.sym.Convolution(data=act1,weight=conv1_w, num_filter=num_filter, kernel=(3,3), stride=stride, pad=(1,1),
                                       no_bias=True, workspace=workspace, name=name + '_conv1_'+idx)
-        bn2 = mx.sym.BatchNorm(data=conv1, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name + '_bn2_'+idx)
+        bn2 = mx.sym.BatchNorm(data=conv1,gamma=bn2_gamma,beta=bn2_beta, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name + '_bn2_'+idx)
         act2 = mx.sym.Activation(data=bn2, act_type='relu', name=name + '_relu2')
-        conv2 = mx.sym.Convolution(data=act2, num_filter=num_filter, kernel=(3,3), stride=(1,1), pad=(1,1),
+        conv2 = mx.sym.Convolution(data=act2,weight=conv2_w, num_filter=num_filter, kernel=(3,3), stride=(1,1), pad=(1,1),
                                       no_bias=True, workspace=workspace, name=name + '_conv2_'+idx)
         return conv2    
-
-    bn1 = mx.sym.BatchNorm(data=data, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn1')
+    bn1_gamma=mx.sym.Variable(name + '_bn1_gamma', init=mx.init.Uniform(),dtype='float32')
+    bn1_beta=mx.sym.Variable(name + '_bn1_beta', init=mx.init.Uniform(),dtype='float32')
+    
+    
+    bn1 = mx.sym.BatchNorm(data=data,gamma=bn1_gamma,beta=bn1_beta, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn1')
     act1 = mx.sym.Activation(data=bn1, act_type='relu', name=name + '_relu1')
     if bottle_neck:
         # the same as https://github.com/facebook/fb.resnet.torch#notes, a bit difference with origin paper
@@ -76,8 +90,9 @@ def hyper_k_branch_residual_unit(data,hyper, num_filter, stride, dim_match,num_b
         if dim_match:
             shortcut = data
         else:
-            shortcut = mx.sym.Convolution(data=act1, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
-                                            workspace=workspace, name=name+'_sc')
+            shortcut_w=mx.sym.Variable(name+'_sc_weight', init=mx.init.Uniform(),dtype='float32')
+            #shortcut_b=mx.sym.Variable(name + '_conv1_'+idx+'_bias', init=mx.init.uniform(),dtype='float32')
+            shortcut = mx.sym.Convolution(data=act1,weight=shortcut_w, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True, workspace=workspace, name=name+'_sc')
             print('sono buggato')
         if memonger:
             shortcut._set_attr(mirror_stage='True')
@@ -102,8 +117,9 @@ def hyper_k_branch_residual_unit(data,hyper, num_filter, stride, dim_match,num_b
         if dim_match:
             shortcut = data
         else:
-            shortcut = mx.sym.Convolution(data=act1, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
-                                            workspace=workspace, name=name+'_sc')
+            
+            shortcut_w=mx.sym.Variable(name+'_sc_weight', init=mx.init.Uniform(),dtype='float32')
+            shortcut = mx.sym.Convolution(data=act1,weight=shortcut_w, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True, workspace=workspace, name=name+'_sc')
             print('sono buggato')
         if memonger:
             shortcut._set_attr(mirror_stage='True')
