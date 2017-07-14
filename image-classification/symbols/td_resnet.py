@@ -33,7 +33,6 @@ def Convolution(data,num_filter,kernel,stride,pad,name,workspace,no_bias=True):
         
         conv_w_dict[name]=mx.sym.Variable(name + '_weight', init=mx.init.Uniform(),dtype='float32')
         count_dict[name]=0
-        print name
     conv = mx.sym.Convolution(data=data,weight=conv_w_dict[name], num_filter=num_filter, kernel=kernel, stride=stride, pad=pad,no_bias=no_bias, workspace=workspace, name=name+'_'+str(count_dict[name]))
     count_dict[name]+=1
     return conv
@@ -45,7 +44,6 @@ def BatchNorm(data,momentum,name):
         gamma_dict[name]=mx.sym.Variable(name +'_gamma', init=mx.init.One(),dtype='float32')
         beta_dict[name]=mx.sym.Variable(name +'_beta', init=mx.init.Zero(),dtype='float32')
         count_dict[name]=0
-        print name
     bn=mx.sym.BatchNorm(data=data,gamma=gamma_dict[name],beta=beta_dict[name], fix_gamma=False, eps=2e-5, momentum=momentum, name=name+'_'+str(count_dict[name]))
     count_dict[name]+=1
     return bn
@@ -55,7 +53,6 @@ def FullyConnected(data,num_hidden,name):
         count_dict[name]=0
         fc_w_dict[name]=mx.sym.Variable(name + '_weight', init=mx.init.Uniform(),dtype='float32')
         fc_b_dict[name]=mx.sym.Variable(name + '_bias', init=mx.init.Uniform(),dtype='float32')
-        print name
     fc = mx.symbol.FullyConnected(data=data,weight=fc_w_dict[name],bias=fc_b_dict[name], num_hidden=num_hidden, name=name+str(count_dict[name]))
     count_dict[name]+=1
     return fc
@@ -81,9 +78,10 @@ def dyn_k_branch_residual_unit(data,hyper, num_filter, stride, dim_match,num_bra
         Workspace used in convolution operator
     """
     k=num_branch
-    def branch_bneck(act1,num_filter,stride,dim_match,name,idx,bn_mom=0.9, workspace=256, memonger=False):
+    def branch_bneck(data,num_filter,stride,dim_match,name,idx,bn_mom=0.9, workspace=256, memonger=False):
         idx=str(idx)
-        
+        bn1 = BatchNorm(data=data, momentum=bn_mom, name=name + '_bn1_'+idx)
+        act1 =Activation(data=bn1, act_type='relu', name=name + '_relu1_'+idx)
         conv1 = Convolution(data=act1, num_filter=int(num_filter*0.25), kernel=(1,1), stride=(1,1), pad=(0,0), name=name + '_conv1_'+idx, no_bias=True, workspace=workspace)
         bn2 = BatchNorm(data=conv1, momentum=bn_mom, name=name + '_bn2_'+idx)
         act2 = Activation(data=bn2, act_type='relu', name=name + '_relu2_'+idx)
@@ -93,10 +91,10 @@ def dyn_k_branch_residual_unit(data,hyper, num_filter, stride, dim_match,num_bra
         conv3 = Convolution(data=act3, num_filter=num_filter, kernel=(1,1), stride=(1,1), pad=(0,0),name=name + '_conv3_'+idx, no_bias=True, workspace=workspace)
         return conv3
 
-    def branch_no_bneck(act1,num_filter,stride,dim_match,name,idx,bn_mom=0.9, workspace=256, memonger=False):
+    def branch_no_bneck(data,num_filter,stride,dim_match,name,idx,bn_mom=0.9, workspace=256, memonger=False):
         idx=str(idx)
-        # bn1 = mx.sym.BatchNorm(data=data, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name + '_bn1_'+idx)
-        # act1 = mx.sym.Activation(data=bn1, act_type='relu', name=name + '_relu1')
+        bn1 = BatchNorm(data=data, momentum=bn_mom, name=name + '_bn1_'+idx)
+        act1 =Activation(data=bn1, act_type='relu', name=name + '_relu1_'+idx)
         conv1 = Convolution(data=act1, num_filter=num_filter, kernel=(3,3), stride=stride, pad=(1,1), name=name + '_conv1_'+idx, no_bias=True, workspace=workspace)
         bn2 = BatchNorm(data=conv1, momentum=bn_mom, name=name + '_bn2_'+idx)
         act2 =Activation(data=bn2, act_type='relu', name=name + '_relu2_'+idx)
@@ -110,7 +108,7 @@ def dyn_k_branch_residual_unit(data,hyper, num_filter, stride, dim_match,num_bra
         conv_3=[]
         for i in range(k):
 
-            out=branch_bneck(act1,num_filter,stride,dim_match,name,i,bn_mom=0.9, workspace=256, memonger=False)
+            out=branch_bneck(data,num_filter,stride,dim_match,name,i,bn_mom=0.9, workspace=256, memonger=False)
             gate=FullyConnected(data=hyper,num_hidden=1, name=name+'_hyper_gate_'+str(i))
             gate=mx.sym.reshape(gate,(0,-1,1,1))
             conv_3.append(mx.sym.broadcast_mul(out, gate))
@@ -118,6 +116,8 @@ def dyn_k_branch_residual_unit(data,hyper, num_filter, stride, dim_match,num_bra
         if dim_match:
             shortcut = data
         else:
+            bn1 = BatchNorm(data=data, momentum=bn_mom, name=name + '_bn1_sc')
+            act1 =Activation(data=bn1, act_type='relu', name=name + '_relu1_sc')
             shortcut = Convolution(data=act1, num_filter=num_filter, kernel=(1,1), stride=stride,pad=(0,0),name=name+'_sc', no_bias=True, workspace=workspace)
         if memonger:
             shortcut._set_attr(mirror_stage='True')   
@@ -126,7 +126,7 @@ def dyn_k_branch_residual_unit(data,hyper, num_filter, stride, dim_match,num_bra
     else:
         conv_2=[]
         for i in range(k):
-            out=branch_no_bneck(act1,num_filter,stride,dim_match,name,i,bn_mom=0.9, workspace=256, memonger=False)
+            out=branch_no_bneck(data,num_filter,stride,dim_match,name,i,bn_mom=0.9, workspace=256, memonger=False)
             gate=FullyConnected(data=hyper,num_hidden=1, name=name+'hyper_gate_'+str(i))
             gate=mx.sym.reshape(gate,(0,-1,1,1))
             conv_2.append(mx.sym.broadcast_mul(out, gate))
@@ -135,6 +135,8 @@ def dyn_k_branch_residual_unit(data,hyper, num_filter, stride, dim_match,num_bra
         if dim_match:
             shortcut = data
         else:
+            bn1 = BatchNorm(data=data, momentum=bn_mom, name=name + '_bn1_sc')
+            act1 =Activation(data=bn1, act_type='relu', name=name + '_relu1_sc')
             shortcut = Convolution(data=act1, num_filter=num_filter, kernel=(1,1), stride=stride,pad=(0,0),name=name+'_sc', no_bias=True,workspace=workspace)
         if memonger:
             shortcut._set_attr(mirror_stage='True')
@@ -168,10 +170,8 @@ def dyn_k_branch_resnet(units, num_stages, filter_list, num_classes, image_shape
     fc1=[]
     for t in range(num_step):
         if t==0:
-            print "pippo"
             hyper=mx.sym.Variable(name='prior',init=mx.init.One(),shape=(128,100),dtype='float32') 
         else:
-            print "tanto"
             hyper=mx.sym.identity(data=fc1[t-1], name='prior_'+str(t))
             
         hyper=mx.sym.SoftmaxActivation(hyper)
@@ -197,7 +197,6 @@ def dyn_k_branch_resnet(units, num_stages, filter_list, num_classes, image_shape
         # Although kernel is not used here when global_pool=True, we should put one
         pool1 = mx.symbol.Pooling(data=relu1, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool1_'+str(t))
         flat = mx.symbol.Flatten(data=pool1)
-        print "mona"
         fc1.append(FullyConnected(data=flat, num_hidden=num_classes, name='fc1'))
     return mx.symbol.SoftmaxOutput(data=fc1[num_step-1], name='softmax1')
 
@@ -298,7 +297,6 @@ def k_branch_residual_unit(data, num_filter, stride, dim_match,num_branch, name,
         else:
             shortcut = mx.sym.Convolution(data=act1, num_filter=num_filter, kernel=(1,1), stride=stride, no_bias=True,
                                             workspace=workspace, name=name+'_sc')
-            print('sono buggato')
         if memonger:
             shortcut._set_attr(mirror_stage='True')
         if elemwise_gate:
