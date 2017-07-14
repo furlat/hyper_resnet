@@ -110,7 +110,7 @@ def dyn_k_branch_residual_unit(data,hyper, num_filter, stride, dim_match,num_bra
 
             out=branch_bneck(data,num_filter,stride,dim_match,name,i,bn_mom=0.9, workspace=256, memonger=False)
             gate=FullyConnected(data=hyper,num_hidden=1, name=name+'_hyper_gate_'+str(i))
-            gate=mx.sym.reshape(gate,(0,-1,1,1))
+            gate=mx.sym.reshape(sym=gate,shape=(0,-1,1,1))
             conv_3.append(mx.sym.broadcast_mul(out, gate))
 
         if dim_match:
@@ -128,7 +128,7 @@ def dyn_k_branch_residual_unit(data,hyper, num_filter, stride, dim_match,num_bra
         for i in range(k):
             out=branch_no_bneck(data,num_filter,stride,dim_match,name,i,bn_mom=0.9, workspace=256, memonger=False)
             gate=FullyConnected(data=hyper,num_hidden=1, name=name+'hyper_gate_'+str(i))
-            gate=mx.sym.reshape(gate,(0,-1,1,1))
+            gate=mx.sym.reshape(sym=gate,shape=(0,-1,1,1))
             conv_2.append(mx.sym.broadcast_mul(out, gate))
        
            
