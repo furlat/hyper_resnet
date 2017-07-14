@@ -89,6 +89,7 @@ if __name__ == "__main__":
     parser.add_argument('--num_epochs', type=int)
     parser.add_argument('--num_branch', type=int)
     parser.add_argument('--num_step', type=int)
+    parser.add_argument('--gpu_id',type=int
 
    # parser.add_argument('--layer-before-fullc', type=str, default='flatten0',
     #                    help='the name of the layer before the last fullc layer')
@@ -99,7 +100,7 @@ if __name__ == "__main__":
 	# see http://mxnet.io/how_to/finetune.html and Mu's thesis
     # http://www.cs.cmu.edu/~muli/file/mu-thesis.pdf 
     parser.set_defaults(image_shape='3,28,28', num_epochs=120,
-                        lr=.1, lr_schedule=[40000,60000,90000], wd=0.004, mom=0.9, batch_size=128,results_prefix='/home/ubuntu/results/',data_dir='/home/ubuntu/data/cifar100',ctx=[mx.gpu(0)], num_layers=50,num_branch=1,num_step=1
+                        lr=.1, lr_schedule=[40000,60000,90000], wd=0.004, mom=0.9, batch_size=128,results_prefix='/home/ubuntu/results/',data_dir='/home/ubuntu/data/cifar100',gpu_id=1], num_layers=50,num_branch=1,num_step=1
 )
 
     args = parser.parse_args()
@@ -120,7 +121,7 @@ if __name__ == "__main__":
     data_dir=args.data_dir
     results_prefix=args.results_prefix
     model_prefix='cif100_'+str(num_layers)+str(num_branch)+str(num_step)
-
+    ctx=[mx.gpu(gpu_id)]
     import logging
     
     import logging
