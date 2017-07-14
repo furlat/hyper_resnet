@@ -120,7 +120,7 @@ if __name__ == "__main__":
     #tx=args.ctx
     data_dir=args.data_dir
     results_prefix=args.results_prefix
-    model_prefix='cif100_'+str(num_layers)+str(num_branch)+str(num_step)
+    model_prefix='cif100_'+str(num_layers)'_' +str(num_branch)'_'+str(num_step)
     ctx=[mx.gpu(args.gpu_id)]
     import logging
     
