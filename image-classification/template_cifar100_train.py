@@ -67,7 +67,7 @@ class Cross_Entropy(mx.metric.EvalMetric):
     def __init__(self):
         super(Cross_Entropy, self).__init__('cross-entropy')
     def update(self, labels, preds):
-        mx.metric.check_label_shapes(labels, preds)
+        #mx.metric.check_label_shapes(labels, preds)
         label = labels[0].asnumpy()
         pred = preds[0].asnumpy()
         for i in range(label.shape[0]):
