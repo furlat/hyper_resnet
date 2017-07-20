@@ -100,7 +100,7 @@ if __name__ == "__main__":
 	# see http://mxnet.io/how_to/finetune.html and Mu's thesis
     # http://www.cs.cmu.edu/~muli/file/mu-thesis.pdf 
     parser.set_defaults(image_shape='3,28,28', num_epochs=120,
-                        lr=.1, lr_schedule=[40000,60000,90000], wd=0.004, mom=0.9, batch_size=128,results_prefix='/home/ubuntu/results/',data_dir='/home/ubuntu/data/cifar100',gpu_id=1, num_layers=50,num_branch=1,num_step=1
+                        lr=.1, lr_schedule=[40000,60000,90000], wd=0.0004, mom=0.9, batch_size=128,results_prefix='/home/ubuntu/results/',data_dir='/home/ubuntu/data/cifar100',gpu_id=1, num_layers=50,num_branch=1,num_step=1
 )
 
     args = parser.parse_args()

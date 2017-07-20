@@ -162,15 +162,17 @@ def dyn_k_branch_resnet(units, num_stages, filter_list, num_classes, image_shape
     param_dictionary()
     num_unit = len(units)
     assert(num_unit == num_stages)
+    label=mx.sym.Variable(name='softmax1_label')
     data = mx.sym.Variable(name='data')
     data = mx.sym.identity(data=data, name='id')
     data = mx.sym.BatchNorm(data=data, fix_gamma=True, eps=2e-5, momentum=bn_mom, name='bn_data')
     (nchannel, height, width) = image_shape
     out=[]
     fc1=[]
+    sfo=[]
     for t in range(num_step):
         if t==0:
-            hyper=mx.sym.Variable(name='prior',init=mx.init.One(),shape=(128,100),dtype='float32') 
+            hyper=mx.sym.Variable(name='prior',init=mx.init.One(),shape=(16,100),dtype='float32') 
         else:
             hyper=mx.sym.identity(data=fc1[t-1], name='prior_'+str(t))
             
@@ -198,7 +200,9 @@ def dyn_k_branch_resnet(units, num_stages, filter_list, num_classes, image_shape
         pool1 = mx.symbol.Pooling(data=relu1, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool1_'+str(t))
         flat = mx.symbol.Flatten(data=pool1)
         fc1.append(FullyConnected(data=flat, num_hidden=num_classes, name='fc1'))
-    return mx.symbol.SoftmaxOutput(data=fc1[num_step-1], name='softmax1')
+        sfo.append(mx.symbol.SoftmaxOutput(data=fc1[t], name='softmax'+str(t),label=label))
+    #return mx.sym.Group(sfo)
+    return sfo[num_stages-1]
 
 
 
@@ -311,7 +315,7 @@ def k_branch_residual_unit(data, num_filter, stride, dim_match,num_branch, name,
             if scalar_gate:
                 print 'scalar gate'
                 out=branch_no_bneck(act1,num_filter,stride,dim_match,name,i,bn_mom=0.9, workspace=256, memonger=False)
-                gate=mx.sym.Variable(name+'gate_'+str(i), init=mx.init.One(),shape=(128,1,1,1),dtype='float32')
+                gate=mx.sym.Variable(name+'gate_'+str(i), init=mx.init.One(),shape=(1,1,1,1),dtype='float32')
                 conv_2.append(mx.sym.broadcast_mul(out, gate))
             else:    
                 conv_2.append(branch_no_bneck(act1,num_filter,stride,dim_match,name,i,bn_mom=0.9, workspace=256, memonger=False))
@@ -501,7 +505,7 @@ def get_unrolled_symbol(num_classes, num_layers, image_shape,num_branch=1,num_st
             bottle_neck = True
         elif (num_layers-2) % 6 == 0 and num_layers < 164:
             per_unit = [(num_layers-2)//6]
-            filter_list = [16, 16, 32, 64]
+            filter_list = [64, 160, 320, 640]
             bottle_neck = False
         else:
             raise ValueError("no experiments done on num_layers {}, you can do it yourself".format(num_layers))
