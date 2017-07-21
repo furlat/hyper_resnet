@@ -90,7 +90,8 @@ if __name__ == "__main__":
     parser.add_argument('--num_branch', type=int)
     parser.add_argument('--num_step', type=int)
     parser.add_argument('--gpu_id',type=int)
-
+    parser.add_argument('--wide',type=int)
+    parser.add_argument('--begin_epoch',type=int)
    # parser.add_argument('--layer-before-fullc', type=str, default='flatten0',
     #                    help='the name of the layer before the last fullc layer')
     # use less augmentations for fine-tune
@@ -99,8 +100,8 @@ if __name__ == "__main__":
     # when training comes to 10th and 20th epoch
 	# see http://mxnet.io/how_to/finetune.html and Mu's thesis
     # http://www.cs.cmu.edu/~muli/file/mu-thesis.pdf 
-    parser.set_defaults(image_shape='3,28,28', num_epochs=120,
-                        lr=.1, lr_schedule=[40000,60000,90000], wd=0.0004, mom=0.9, batch_size=128,results_prefix='/home/ubuntu/results/',data_dir='/home/ubuntu/data/cifar100',gpu_id=1, num_layers=50,num_branch=1,num_step=1
+    parser.set_defaults(image_shape='3,28,28', num_epochs=300,
+                        lr=0.1, lr_schedule=[40000,60000,90000], wd=0.0004, mom=0.9, batch_size=128,results_prefix='/home/ubuntu/results/',data_dir='/home/ubuntu/data/cifar100',gpu_id=1, num_layers=50,num_branch=1,num_step=1,begin_epoch=0
 )
 
     args = parser.parse_args()
@@ -118,11 +119,15 @@ if __name__ == "__main__":
     wd=args.wd
     mom=args.mom
     #tx=args.ctx
+    begin_epoch=args.begin_epoch
     data_dir=args.data_dir
     results_prefix=args.results_prefix
-    model_prefix='cif100_'+str(num_layers)+'_' +str(num_branch)+'_'+str(num_step)
     ctx=[mx.gpu(args.gpu_id)]
-    import logging
+    if args.wide == 1:
+        wide = True
+    else:
+        wide = False
+    model_prefix='cif100_'+str(num_layers)+'_' +str(num_branch)+'_'+str(num_step)+'_wide_'+str(args.wide)
     
     import logging
 
@@ -143,7 +148,7 @@ if __name__ == "__main__":
     label_names = [train.provide_label[0][0]]
     from importlib import import_module
     net = import_module('symbols.td_resnet')
-    sym=net.get_unrolled_symbol(100, num_layers, image_shape,num_branch=num_branch,num_step=num_step, conv_workspace=256,bottle_neck=True)
+    sym=net.get_unrolled_symbol(100, num_layers, image_shape,num_branch=num_branch,num_step=num_step,wide=wide, conv_workspace=256,bottle_neck=True)
 
 
 
@@ -208,8 +213,7 @@ if __name__ == "__main__":
     checkpoint = mx.callback.module_checkpoint(mod,checkpoint_path,period=5)
     #lr_schedule it isimilar to the CIFAR100 schedule but half length of the steps
     schedule = [40000,60000,90000]
-    begin_epoch=0
-
+    
 
     # In[9]:
 

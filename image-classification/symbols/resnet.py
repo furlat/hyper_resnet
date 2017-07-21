@@ -67,7 +67,7 @@ def residual_unit(data, num_filter, stride, dim_match, name, bottle_neck=True, b
             shortcut._set_attr(mirror_stage='True')
         return conv2 + shortcut
 
-def resnet(units, num_stages, filter_list, num_classes, image_shape, bottle_neck=True, bn_mom=0.9, workspace=256, memonger=False):
+def resnet(units, num_stages, filter_list, num_classes, image_shape, bottle_neck=True, bn_mom=0.1, workspace=256, memonger=False):
     """Return ResNet symbol of
     Parameters
     ----------
@@ -115,7 +115,7 @@ def resnet(units, num_stages, filter_list, num_classes, image_shape, bottle_neck
     fc1 = mx.symbol.FullyConnected(data=flat, num_hidden=num_classes, name='fc1')
     return mx.symbol.SoftmaxOutput(data=fc1, name='softmax')
 
-def get_symbol(num_classes, num_layers, image_shape, conv_workspace=256, **kwargs):
+def get_symbol(num_classes, num_layers, image_shape,wide=False, conv_workspace=256, **kwargs):
     """
     Adapted from https://github.com/tornadomeet/ResNet/blob/master/train_resnet.py
     Original author Wei Wu
@@ -126,11 +126,14 @@ def get_symbol(num_classes, num_layers, image_shape, conv_workspace=256, **kwarg
         num_stages = 3
         if (num_layers-2) % 9 == 0 and num_layers >= 164:
             per_unit = [(num_layers-2)//9]
-            filter_list = [16, 64, 128, 256]
+            filter_list = [16, 64, 128, 256] 
             bottle_neck = True
         elif (num_layers-2) % 6 == 0 and num_layers < 164:
             per_unit = [(num_layers-2)//6]
-            filter_list = [16, 16, 32, 64]
+            if wide:
+                filter_list=[16, 160, 320, 640]
+            else:    
+                filter_list = [16, 16, 32, 64]
             bottle_neck = False
         else:
             raise ValueError("no experiments done on num_layers {}, you can do it yourself".format(num_layers))
