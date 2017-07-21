@@ -1,0 +1,9 @@
+python template_cifar100_train.py --num_layers 20 --num_branch 1 --num_step 1 --gpu_id 0 &
+python template_cifar100_train.py --num_layers 20 --num_branch 2 --num_step 10 --gpu_id 1 &
+python template_cifar100_train.py --num_layers 20 --num_branch 3 --num_step 1 --gpu_id 2 &
+python template_cifar100_train.py --num_layers 20 --num_branch 1 --num_step 2 --gpu_id 3 &
+python template_cifar100_train.py --num_layers 20 --num_branch 1 --num_step 3 --gpu_id 4 &
+python template_cifar100_train.py --num_layers 14 --num_branch 2 --num_step 5 --gpu_id 5 &
+python template_cifar100_train.py --num_layers 14 --num_branch 3 --num_step 5 --gpu_id 6 &
+python template_cifar100_train.py --num_layers 14 --num_branch 2 --num_step 2 --gpu_id 7 &
+
